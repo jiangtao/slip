@@ -166,7 +166,8 @@ h1+p {
 <p><a href="https://github.com/pornel/slip">Bug/fork/star on GitHub</a>.</p>
 <script src="slip.js"></script>
 <script>
-    function setupSlip(list) {
+    function setupSlip(list, options) {
+        options = options || {}
         list.addEventListener('slip:beforereorder', function(e){
             if (e.target.classList.contains('demo-no-reorder')) {
                 e.preventDefault();
@@ -191,7 +192,7 @@ h1+p {
             e.target.parentNode.insertBefore(e.target, e.detail.insertBefore);
             return false;
         }, false);
-        return new Slip(list);
+        return new Slip(list, options);
     }
     setupSlip(document.getElementById('demo1'));
     setupSlip(document.getElementById('demo2'));

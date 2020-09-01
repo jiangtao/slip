@@ -109,21 +109,19 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-window['Slip'] = (function(){
-    'use strict';
-
+window.Slip = (function () {
     var accessibility = {
         // Set values to false if you don't want Slip to manage them
         container: {
-            ariaRole: "listbox",
+            ariaRole: 'listbox',
             tabIndex: 0,
-            focus: false, // focuses after drop
+            focus: false // focuses after drop
         },
         items: {
-            ariaRole: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
+            ariaRole: 'option', // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
             tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
-            focus: false, // focuses when dragging
-        },
+            focus: false // focuses when dragging
+        }
     };
 
     var damnYouChrome = /Chrome\/[3-5]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :( Intended to catch all versions of Chrome 30-40
@@ -136,10 +134,10 @@ window['Slip'] = (function(){
     // -webkit-mess
     var testElementStyle = document.createElement('div').style;
 
-    var transitionJSPropertyName = "transition" in testElementStyle ? "transition" : "webkitTransition";
-    var transformJSPropertyName = "transform" in testElementStyle ? "transform" : "webkitTransform";
-    var transformCSSPropertyName = transformJSPropertyName === "webkitTransform" ? "-webkit-transform" : "transform";
-    var userSelectJSPropertyName = "userSelect" in testElementStyle ? "userSelect" : "webkitUserSelect";
+    var transitionJSPropertyName = 'transition' in testElementStyle ? 'transition' : 'webkitTransition';
+    var transformJSPropertyName = 'transform' in testElementStyle ? 'transform' : 'webkitTransform';
+    var transformCSSPropertyName = transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
+    var userSelectJSPropertyName = 'userSelect' in testElementStyle ? 'userSelect' : 'webkitUserSelect';
 
     testElementStyle[transformJSPropertyName] = 'translateZ(0)';
     var hwLayerMagicStyle = testElementStyle[transformJSPropertyName] ? 'translateZ(0) ' : '';
@@ -148,11 +146,12 @@ window['Slip'] = (function(){
 
     var globalInstances = 0;
     var attachedBodyHandlerHack = false;
-    var nullHandler = function(){};
+    var nullHandler = function () {};
+    var locks = []
 
-    function Slip(container, options) {
-        if ('string' === typeof container) container = document.querySelector(container);
-        if (!container || !container.addEventListener) throw new Error("Please specify DOM node to attach to");
+    function Slip (container, options) {
+        if (typeof container === 'string') container = document.querySelector(container);
+        if (!container || !container.addEventListener) throw new Error('Please specify DOM node to attach to');
 
         if (!this || this === window) return new Slip(container, options);
 
@@ -161,8 +160,9 @@ window['Slip'] = (function(){
         this.options.minimumSwipeVelocity = options.minimumSwipeVelocity || 1;
         this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
         this.options.ignoredElements = options.ignoredElements || [];
+        this.options.swipeLeft = options.swipeLeft || { stop: 0, section: 0 }; // { stop: -100, section: 30 }
 
-        if (!Array.isArray(this.options.ignoredElements)) throw new Error("ignoredElements must be an Array");
+        if (!Array.isArray(this.options.ignoredElements)) throw new Error('ignoredElements must be an Array');
 
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
@@ -180,36 +180,36 @@ window['Slip'] = (function(){
         this.attach(container);
     }
 
-    function getTransform(node) {
+    function getTransform (node) {
         var transform = node.style[transformJSPropertyName];
         if (transform) {
             return {
                 value: transform,
-                original: transform,
+                original: transform
             };
         }
 
         if (window.getComputedStyle) {
             var style = window.getComputedStyle(node).getPropertyValue(transformCSSPropertyName);
-            if (style && style !== 'none') return {value:style, original:''};
+            if (style && style !== 'none') return {value: style, original: ''};
         }
-        return {value:'', original:''};
+        return {value: '', original: ''};
     }
 
-    function findIndex(target, nodes) {
-      var originalIndex = 0;
-      var listCount = 0;
+    function findIndex (target, nodes) {
+        var originalIndex = 0;
+        var listCount = 0;
 
-      for (var i=0; i < nodes.length; i++) {
-        if (nodes[i].nodeType === 1) {
-          listCount++;
-          if (nodes[i] === target.node) {
-            originalIndex = listCount-1;
-          }
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].nodeType === 1) {
+                listCount++;
+                if (nodes[i] === target.node) {
+                    originalIndex = listCount - 1;
+                }
+            }
         }
-      }
 
-      return originalIndex;
+        return originalIndex;
     }
 
     // All functions in states are going to be executed in context of Slip object
@@ -231,7 +231,7 @@ window['Slip'] = (function(){
         canPreventScrolling: false,
 
         states: {
-            idle: function idleStateInit() {
+            idle: function idleStateInit () {
                 this.removeMouseHandlers();
                 if (this.target) {
                     this.target.node.style.willChange = '';
@@ -240,11 +240,11 @@ window['Slip'] = (function(){
                 this.usingTouch = false;
 
                 return {
-                    allowTextSelection: true,
+                    allowTextSelection: true
                 };
             },
 
-            undecided: function undecidedStateInit() {
+            undecided: function undecidedStateInit () {
                 this.target.height = this.target.node.offsetHeight;
                 this.target.node.style.willChange = transformCSSPropertyName;
                 this.target.node.style[transitionJSPropertyName] = '';
@@ -254,9 +254,9 @@ window['Slip'] = (function(){
                         this.setState(this.states.reorder);
                     }
                 } else {
-                    var holdTimer = setTimeout(function(){
+                    var holdTimer = setTimeout(function () {
                         var move = this.getAbsoluteMovement();
-                        if (this.canPreventScrolling && move.x < 15 && move.y < 25) {
+                        if (this.canPreventScrolling && move.x < 25 && move.y < 25) {
                             if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
                                 this.setState(this.states.reorder);
                             }
@@ -265,91 +265,148 @@ window['Slip'] = (function(){
                 }
 
                 return {
-                    leaveState: function() {
+                    leaveState: function () {
                         clearTimeout(holdTimer);
                     },
 
-                    onMove: function() {
+                    onMove: function () {
                         var move = this.getAbsoluteMovement();
 
-                        if (move.x > 20 && move.y < Math.max(100, this.target.height)) {
+                        if (move.x > 30 && move.y < Math.max(100, this.target.height)) {
                             if (this.dispatch(this.target.originalTarget, 'beforeswipe', {directionX: move.directionX, directionY: move.directionY})) {
                                 this.setState(this.states.swipe);
                                 return false;
-                            } else {
-                                this.setState(this.states.idle);
                             }
+                            this.setState(this.states.idle);
                         }
                         if (move.y > 20) {
                             this.setState(this.states.idle);
                         }
 
                         // Chrome likes sideways scrolling :(
-                        if (move.x > move.y*1.2) return false;
+                        if (move.x > move.y * 1.2) return false;
                     },
 
-                    onLeave: function() {
+                    onLeave: function () {
                         this.setState(this.states.idle);
                     },
 
-                    onEnd: function() {
+                    onEnd: function () {
                         var allowDefault = this.dispatch(this.target.originalTarget, 'tap');
                         this.setState(this.states.idle);
                         return allowDefault;
-                    },
+                    }
                 };
             },
 
-            swipe: function swipeStateInit() {
+            swipe: function swipeStateInit () {
                 var swipeSuccess = false;
                 var container = this.container;
+                var options = this.options
 
                 var originalIndex = findIndex(this.target, this.container.childNodes);
+                var target = this.target
 
                 container.classList.add('slip-swiping-container');
-                function removeClass() {
+
+                function removeClass () {
                     container.classList.remove('slip-swiping-container');
+                }
+
+                function translateStyle (L) {
+                    target.node.style[transformJSPropertyName] = 'translate(' + L + 'px,0) ' + hwLayerMagicStyle + target.baseTransform.value;
+                }
+                function setTransform (target, left) {
+                    var transform = 'translate('+ left +  'px, 0px) translateZ(0px)'
+                    target.baseTransform.value = transform
+                    target.baseTransform.original = transform
+                    return target
+                }
+                var ctx = this
+                function resetState (t) {
+                    setTransform(t, 0)
+                    ctx.animateToZero(undefined, t);
+                    t.node.lock = false
                 }
 
                 this.target.height = this.target.node.offsetHeight;
 
                 return {
-                    leaveState: function() {
+                    leaveState: function () {
                         if (swipeSuccess) {
-                            this.animateSwipe(function(target){
+                            this.animateSwipe(function (target) {
                                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                                 target.node.style[transitionJSPropertyName] = '';
                                 if (this.dispatch(target.node, 'afterswipe')) {
                                     removeClass();
                                     return true;
-                                } else {
-                                    this.animateToZero(undefined, target);
                                 }
+                                this.animateToZero(undefined, target);
                             }.bind(this));
                         } else {
                             this.animateToZero(removeClass);
                         }
                     },
-
-                    onMove: function() {
-                        var move = this.getTotalMovement();
-
-                        if (Math.abs(move.y) < this.target.height+20) {
-                            if (this.dispatch(this.target.node, 'animateswipe', {x: move.x, originalIndex: originalIndex})) {
-                                this.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + this.target.baseTransform.value;
+                    swipeLeftMove: function (move, forceLock) {
+                        var leftBorder = options.swipeLeft.stop
+                        var section = options.swipeLeft.section
+                        var lock = target.node.lock
+                        if (lock) {
+                            if (move.x > 0) {
+                                // swipe back to origin
+                                if (-leftBorder - move.x <  -leftBorder * 3 / 4) {
+                                    setTransform(target, 0)
+                                    this.dispatch(target.node, 'cancelswipe');
+                                    this.setState(this.states.idle);
+                                    target.node.lock = false
+                                } else {
+                                    translateStyle(move.x)
+                                }
                             }
-                            return false;
                         } else {
-                            this.dispatch(this.target.node, 'cancelswipe');
-                            this.setState(this.states.idle);
+                            // console.log(move.x, leftBorder)
+                            // swipe to left target and lock the pos
+                            if (move.x < 0 && leftBorder && move.x < leftBorder + section) {
+                                // reset locks back to original
+                                locks.forEach(function(target) {
+                                    if(target.node.lock) resetState(target)
+                                }, this)
+                                locks = []
+
+                                setTransform(target, leftBorder)
+                                this.setState(this.states.idle);
+                                if (forceLock) {
+                                    target.node.lock = true
+                                    locks.push(target)
+                                }
+                            } else if (!leftBorder && !section){
+                                // nothing
+                                this.dispatch(target.node, 'cancelswipe');
+                            } else if (move.x > 0){
+                                // disable move
+                            } else {
+                                translateStyle(move.x)
+                            }
                         }
                     },
+                    onMove: function () {
+                        var move = this.getTotalMovement();
 
-                    onLeave: function() {
+                        if (Math.abs(move.y) < this.target.height + 20) {
+                            if (this.dispatch(this.target.node, 'animateswipe', {x: move.x, originalIndex: originalIndex})) {
+                                this.state.swipeLeftMove.call(this, move, true)
+                            }
+                            return false;
+                        }
+                        this.dispatch(this.target.node, 'cancelswipe');
+                        this.setState(this.states.idle);
+                    },
+
+                    onLeave: function () {
                         this.state.onEnd.call(this);
                     },
 
-                    onEnd: function() {
+                    onEnd: function () {
                         var move = this.getAbsoluteMovement();
                         var velocity = move.x / move.time;
 
@@ -365,13 +422,16 @@ window['Slip'] = (function(){
                         } else {
                             this.dispatch(this.target.node, 'cancelswipe');
                         }
-                        this.setState(this.states.idle);
+                        if (!this.target.node.lock) {
+                            this.setState(this.states.idle);
+                        }
+
                         return !swiped;
-                    },
+                    }
                 };
             },
 
-            reorder: function reorderStateInit() {
+            reorder: function reorderStateInit () {
                 if (this.target.node.focus && accessibility.items.focus) {
                     this.target.node.focus();
                 }
@@ -393,7 +453,7 @@ window['Slip'] = (function(){
                     });
                     try {
                         nodes = container.parentNode.querySelectorAll(query);
-                    } catch(err) {
+                    } catch (err) {
                         if (err instanceof DOMException && err.name === 'SyntaxError')
                             throw new Error('ignoredElements you specified contain invalid query');
                         else
@@ -404,16 +464,16 @@ window['Slip'] = (function(){
                 }
                 var originalIndex = findIndex(this.target, nodes);
                 var mouseOutsideTimer;
-                var zero = this.target.node.offsetTop + this.target.height/2;
+                var zero = this.target.node.offsetTop + this.target.height / 2;
                 var otherNodes = [];
-                for(var i=0; i < nodes.length; i++) {
+                for (var i = 0; i < nodes.length; i++) {
                     if (nodes[i].nodeType != 1 || nodes[i] === this.target.node) continue;
                     var t = nodes[i].offsetTop;
                     nodes[i].style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
                     otherNodes.push({
                         node: nodes[i],
                         baseTransform: getTransform(nodes[i]),
-                        pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero,
+                        pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero
                     });
                 }
 
@@ -425,8 +485,8 @@ window['Slip'] = (function(){
                     this.container.style.webkitTransformStyle = 'preserve-3d';
                 }
 
-                function onMove() {
-                    /*jshint validthis:true */
+                function onMove () {
+                    /* jshint validthis:true */
 
                     this.updateScrolling();
 
@@ -439,16 +499,15 @@ window['Slip'] = (function(){
                     this.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + this.target.baseTransform.value;
 
                     var height = this.target.height;
-                    otherNodes.forEach(function(o){
+                    otherNodes.forEach(function (o) {
                         var off = 0;
                         if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
                             off = height;
-                        }
-                        else if (o.pos > 0 && move.y > 0 && o.pos < move.y) {
+                        } else if (o.pos > 0 && move.y > 0 && o.pos < move.y) {
                             off = -height;
                         }
                         // FIXME: should change accelerated/non-accelerated state lazily
-                        o.node.style[transformJSPropertyName] = off ? 'translate(0,'+off+'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
+                        o.node.style[transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
                     });
                     return false;
                 }
@@ -456,7 +515,7 @@ window['Slip'] = (function(){
                 onMove.call(this);
 
                 return {
-                    leaveState: function() {
+                    leaveState: function () {
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
 
                         if (compositorDoesNotOrderLayers) {
@@ -470,10 +529,10 @@ window['Slip'] = (function(){
                         this.target.node.classList.remove('slip-reordering');
                         this.target.node.style[userSelectJSPropertyName] = '';
 
-                        this.animateToZero(function(target){
+                        this.animateToZero(function (target) {
                             target.node.style.zIndex = '';
                         });
-                        otherNodes.forEach(function(o){
+                        otherNodes.forEach(function (o) {
                             o.node.style[transformJSPropertyName] = o.baseTransform.original;
                             o.node.style[transitionJSPropertyName] = ''; // FIXME: animate to new position
                         });
@@ -481,49 +540,49 @@ window['Slip'] = (function(){
 
                     onMove: onMove,
 
-                    onLeave: function() {
+                    onLeave: function () {
                         // don't let element get stuck if mouse left the window
                         // but don't cancel immediately as it'd be annoying near window edges
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
-                        mouseOutsideTimer = setTimeout(function(){
+                        mouseOutsideTimer = setTimeout(function () {
                             mouseOutsideTimer = null;
                             this.cancel();
                         }.bind(this), 700);
                     },
 
-                    onEnd: function() {
+                    onEnd: function () {
                         var move = this.getTotalMovement();
                         var i, spliceIndex;
                         if (move.y < 0) {
-                            for (i=0; i < otherNodes.length; i++) {
+                            for (i = 0; i < otherNodes.length; i++) {
                                 if (otherNodes[i].pos > move.y) {
                                     break;
                                 }
                             }
                             spliceIndex = i;
                         } else {
-                            for (i=otherNodes.length-1; i >= 0; i--) {
+                            for (i = otherNodes.length - 1; i >= 0; i--) {
                                 if (otherNodes[i].pos < move.y) {
                                     break;
                                 }
                             }
-                            spliceIndex = i+1;
+                            spliceIndex = i + 1;
                         }
 
                         this.dispatch(this.target.node, 'reorder', {
                             spliceIndex: spliceIndex,
                             originalIndex: originalIndex,
-                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
+                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null
                         });
 
                         this.setState(this.states.idle);
                         return false;
-                    },
+                    }
                 };
-            },
+            }
         },
 
-        attach: function(container) {
+        attach: function (container) {
             globalInstances++;
             if (this.container) this.detach();
 
@@ -537,7 +596,7 @@ window['Slip'] = (function(){
             this.container = container;
 
             // Accessibility
-            if (false !== accessibility.container.tabIndex) {
+            if (accessibility.container.tabIndex !== false) {
                 this.container.tabIndex = accessibility.container.tabIndex;
             }
             if (accessibility.container.ariaRole) {
@@ -549,7 +608,7 @@ window['Slip'] = (function(){
             this.otherNodes = [];
 
             // selection on iOS interferes with reordering
-            document.addEventListener("selectionchange", this.onSelection, false);
+            document.addEventListener('selectionchange', this.onSelection, false);
 
             // cancel is called e.g. when iOS detects multitasking gesture
             this.container.addEventListener('touchcancel', this.cancel, false);
@@ -560,7 +619,7 @@ window['Slip'] = (function(){
             // mousemove and mouseup are attached dynamically
         },
 
-        detach: function() {
+        detach: function () {
             this.cancel();
 
             this.container.removeEventListener('mousedown', this.onMouseDown, false);
@@ -569,9 +628,9 @@ window['Slip'] = (function(){
             this.container.removeEventListener('touchstart', this.onTouchStart, false);
             this.container.removeEventListener('touchcancel', this.cancel, false);
 
-            document.removeEventListener("selectionchange", this.onSelection, false);
+            document.removeEventListener('selectionchange', this.onSelection, false);
 
-            if (false !== accessibility.container.tabIndex) {
+            if (accessibility.container.tabIndex !== false) {
                 this.container.removeAttribute('tabIndex');
             }
             if (accessibility.container.ariaRole) {
@@ -586,7 +645,7 @@ window['Slip'] = (function(){
             }
         },
 
-        setState: function(newStateCtor){
+        setState: function (newStateCtor) {
             if (this.state) {
                 if (this.state.ctor === newStateCtor) return;
                 if (this.state.leaveState) this.state.leaveState.call(this);
@@ -601,44 +660,44 @@ window['Slip'] = (function(){
             }
         },
 
-        findTargetNode: function(targetNode) {
-            while(targetNode && targetNode.parentNode !== this.container) {
+        findTargetNode: function (targetNode) {
+            while (targetNode && targetNode.parentNode !== this.container) {
                 targetNode = targetNode.parentNode;
             }
             return targetNode;
         },
 
-        onContainerFocus: function(e) {
+        onContainerFocus: function (e) {
             e.stopPropagation();
             this.setChildNodesAriaRoles();
         },
 
-        setChildNodesAriaRoles: function() {
+        setChildNodesAriaRoles: function () {
             var nodes = this.container.childNodes;
-            for(var i=0; i < nodes.length; i++) {
+            for (var i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
                 if (accessibility.items.ariaRole) {
                     nodes[i].setAttribute('aria-role', accessibility.items.ariaRole);
                 }
-                if (false !== accessibility.items.tabIndex) {
+                if (accessibility.items.tabIndex !== false) {
                     nodes[i].tabIndex = accessibility.items.tabIndex;
                 }
             }
         },
 
-        unSetChildNodesAriaRoles: function() {
+        unSetChildNodesAriaRoles: function () {
             var nodes = this.container.childNodes;
-            for(var i=0; i < nodes.length; i++) {
+            for (var i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
                 if (accessibility.items.ariaRole) {
                     nodes[i].removeAttribute('aria-role');
                 }
-                if (false !== accessibility.items.tabIndex) {
+                if (accessibility.items.tabIndex !== false) {
                     nodes[i].removeAttribute('tabIndex');
                 }
             }
         },
-        onSelection: function(e) {
+        onSelection: function (e) {
             e.stopPropagation();
             var isRelated = e.target === document || this.findTargetNode(e);
             var iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
@@ -654,7 +713,7 @@ window['Slip'] = (function(){
             }
         },
 
-        addMouseHandlers: function() {
+        addMouseHandlers: function () {
             // unlike touch events, mousemove/up is not conveniently fired on the same element,
             // but I don't need to listen to unrelated events all the time
             if (!this.mouseHandlersAttached) {
@@ -666,7 +725,7 @@ window['Slip'] = (function(){
             }
         },
 
-        removeMouseHandlers: function() {
+        removeMouseHandlers: function () {
             if (this.mouseHandlersAttached) {
                 this.mouseHandlersAttached = false;
                 document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
@@ -676,7 +735,7 @@ window['Slip'] = (function(){
             }
         },
 
-        onMouseLeave: function(e) {
+        onMouseLeave: function (e) {
             e.stopPropagation();
             if (this.usingTouch) return;
 
@@ -687,7 +746,7 @@ window['Slip'] = (function(){
             }
         },
 
-        onMouseDown: function(e) {
+        onMouseDown: function (e) {
             e.stopPropagation();
             if (this.usingTouch || e.button != 0 || !this.setTarget(e)) return;
 
@@ -698,11 +757,11 @@ window['Slip'] = (function(){
             this.startAtPosition({
                 x: e.clientX,
                 y: e.clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
-        onTouchStart: function(e) {
+        onTouchStart: function (e) {
             e.stopPropagation();
             this.usingTouch = true;
             this.canPreventScrolling = true;
@@ -718,11 +777,11 @@ window['Slip'] = (function(){
             this.startAtPosition({
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
-        setTarget: function(e) {
+        setTarget: function (e) {
             var targetNode = this.findTargetNode(e.target);
             if (!targetNode) {
                 this.setState(this.states.idle);
@@ -749,17 +808,17 @@ window['Slip'] = (function(){
                 scrollContainer: scrollContainer,
                 origScrollTop: scrollContainer.scrollTop,
                 origScrollHeight: scrollContainer.scrollHeight,
-                baseTransform: getTransform(targetNode),
+                baseTransform: getTransform(targetNode)
             };
             return true;
         },
 
-        startAtPosition: function(pos) {
+        startAtPosition: function (pos) {
             this.startPosition = this.previousPosition = this.latestPosition = pos;
             this.setState(this.states.undecided);
         },
 
-        updatePosition: function(e, pos) {
+        updatePosition: function (e, pos) {
             if (this.target == null) {
                 return;
             }
@@ -777,66 +836,66 @@ window['Slip'] = (function(){
             }
         },
 
-        onMouseMove: function(e) {
+        onMouseMove: function (e) {
             e.stopPropagation();
             this.updatePosition(e, {
                 x: e.clientX,
                 y: e.clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
-        onTouchMove: function(e) {
+        onTouchMove: function (e) {
             e.stopPropagation();
             this.updatePosition(e, {
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
 
             // In Apple's touch model only the first move event after touchstart can prevent scrolling (and event.cancelable is broken)
             this.canPreventScrolling = false;
         },
 
-        onMouseUp: function(e) {
+        onMouseUp: function (e) {
             e.stopPropagation();
             if (this.usingTouch || e.button !== 0) return;
 
-            if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+            if (this.state.onEnd && this.state.onEnd.call(this) === false) {
                 e.preventDefault();
             }
         },
 
-        onTouchEnd: function(e) {
+        onTouchEnd: function (e) {
             e.stopPropagation();
             if (e.touches.length > 1) {
                 this.cancel();
-            } else if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+            } else if (this.state.onEnd && this.state.onEnd.call(this) === false) {
                 e.preventDefault();
             }
         },
 
-        getTotalMovement: function() {
+        getTotalMovement: function () {
             var scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
             return {
                 x: this.latestPosition.x - this.startPosition.x,
                 y: this.latestPosition.y - this.startPosition.y + scrollOffset,
-                time: this.latestPosition.time - this.startPosition.time,
+                time: this.latestPosition.time - this.startPosition.time
             };
         },
 
-        getAbsoluteMovement: function() {
+        getAbsoluteMovement: function () {
             var move = this.getTotalMovement();
             return {
                 x: Math.abs(move.x),
                 y: Math.abs(move.y),
                 time: move.time,
                 directionX: move.x < 0 ? 'left' : 'right',
-                directionY: move.y < 0 ? 'up' : 'down',
+                directionY: move.y < 0 ? 'up' : 'down'
             };
         },
 
-        updateScrolling: function() {
+        updateScrolling: function () {
             var triggerOffset = 40,
                 offset = 0;
 
@@ -848,16 +907,15 @@ window['Slip'] = (function(){
                 maxScrollTop = this.target.origScrollHeight - Math.min(scrollable.clientHeight, window.innerHeight);
 
             if (bottomOffset < triggerOffset) {
-              offset = Math.min(triggerOffset, triggerOffset - bottomOffset);
-            }
-            else if (topOffset < triggerOffset) {
-              offset = Math.max(-triggerOffset, topOffset - triggerOffset);
+                offset = Math.min(triggerOffset, triggerOffset - bottomOffset);
+            } else if (topOffset < triggerOffset) {
+                offset = Math.max(-triggerOffset, topOffset - triggerOffset);
             }
 
             scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
         },
 
-        dispatch: function(targetNode, eventName, detail) {
+        dispatch: function (targetNode, eventName, detail) {
             var event = document.createEvent('CustomEvent');
             if (event && event.initCustomEvent) {
                 event.initCustomEvent('slip:' + eventName, true, true, detail);
@@ -869,33 +927,33 @@ window['Slip'] = (function(){
             return targetNode.dispatchEvent(event);
         },
 
-        getSiblings: function(target) {
+        getSiblings: function (target) {
             var siblings = [];
             var tmp = target.node.nextSibling;
-            while(tmp) {
+            while (tmp) {
                 if (tmp.nodeType == 1) siblings.push({
                     node: tmp,
-                    baseTransform: getTransform(tmp),
+                    baseTransform: getTransform(tmp)
                 });
                 tmp = tmp.nextSibling;
             }
             return siblings;
         },
 
-        animateToZero: function(callback, target) {
+        animateToZero: function (callback, target) {
             // save, because this.target/container could change during animation
             target = target || this.target;
 
             target.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-out';
             target.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + target.baseTransform.value;
-            setTimeout(function(){
+            setTimeout(function () {
                 target.node.style[transitionJSPropertyName] = '';
                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                 if (callback) callback.call(this, target);
             }.bind(this), 101);
         },
 
-        animateSwipe: function(callback) {
+        animateSwipe: function (callback) {
             var target = this.target;
             var siblings = this.getSiblings(target);
             var emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
@@ -904,19 +962,19 @@ window['Slip'] = (function(){
             target.node.style[transitionJSPropertyName] = 'all 0.1s linear';
             target.node.style[transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
 
-            setTimeout(function(){
+            setTimeout(function () {
                 if (callback.call(this, target)) {
-                    siblings.forEach(function(o){
+                    siblings.forEach(function (o) {
                         o.node.style[transitionJSPropertyName] = '';
                         o.node.style[transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
                     });
-                    setTimeout(function(){
-                        siblings.forEach(function(o){
+                    setTimeout(function () {
+                        siblings.forEach(function (o) {
                             o.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
                             o.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
                         });
-                        setTimeout(function(){
-                            siblings.forEach(function(o){
+                        setTimeout(function () {
+                            siblings.forEach(function (o) {
                                 o.node.style[transitionJSPropertyName] = '';
                                 o.node.style[transformJSPropertyName] = o.baseTransform.original;
                             });
@@ -924,19 +982,18 @@ window['Slip'] = (function(){
                     }, 1);
                 }
             }.bind(this), 101);
-        },
+        }
     };
 
     // AMD
-    if ('function' === typeof define && define.amd) {
-        define(function(){
+    if (typeof define === 'function' && define.amd) {
+        define(function () {
             return Slip;
         });
     }
     // CJS
-    if ('object' === typeof module && module.exports) {
+    if (typeof module === 'object' && module.exports) {
         module.exports = Slip;
     }
     return Slip;
 })();
-
